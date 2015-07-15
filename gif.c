@@ -17,12 +17,17 @@
 
 #define INLINE static inline
 
+// QuantizeBuffer has been removed from giflib 4.2
+// in http://sourceforge.net/p/giflib/code/ci/ce02f85e6ed1e1455a4aea9ffa68a3e2b8f8a4b1/
+#if !defined(GIFLIB_MAJOR) || (GIFLIB_MAJOR == 4 && GIFLIB_MINOR < 2)
+    #define GifQuantizeBuffer QuantizeBuffer
+#endif
+
 #if !defined(GIFLIB_MAJOR) || GIFLIB_MAJOR < 5
     #define EGifOpen(x, y, z) EGifOpen(x, y)
     #define EGifCloseFile(x, y) EGifCloseFile(x)
     #define GifMakeMapObject MakeMapObject
     #define GifFreeMapObject FreeMapObject
-    #define GifQuantizeBuffer QuantizeBuffer
     #define GIF_BEGIN_APP_EXTENSION(f) EGifPutExtensionFirst(f, APPLICATION_EXT_FUNC_CODE, strlen(GIF_APP), GIF_APP)
     #define GIF_END_APP_EXTENSION(f, m) EGifPutExtensionLast(f, APPLICATION_EXT_FUNC_CODE, sizeof(m), m)
 #else
@@ -197,7 +202,7 @@ gif_save(const Image *image, const ColorMapObject *color_map, Frame *frames, int
                 return NULL;
             }
         }
-    } 
+    }
     EGifCloseFile(gif_file, NULL);
     *size = buf.size;
     return buf.data;
@@ -305,6 +310,7 @@ gif_encode(Image *image, int single, int *size)
     ColorMapObject *palette = GifMakeMapObject(NCOLORS, NULL);
     int palette_size = NCOLORS;
 
+#if !defined(GIFLIB_MAJOR) || (GIFLIB_MAJOR == 4 && GIFLIB_MINOR < 2)
     // Quantize again using giflib, since it yields a palette which produces
     // better compression, reducing the file size by 20%. Note that this second
     // quantization is very fast, because the image already has 256 colors, so
@@ -314,6 +320,7 @@ gif_encode(Image *image, int single, int *size)
         free(frames);
         return NULL;
     }
+#endif
 
     frames->width = width;
     frames->height = height;
@@ -331,7 +338,7 @@ gif_encode(Image *image, int single, int *size)
         frame->height = height;
         frame->duration = cur->delay;
         GifPixelType *data = frame->data;
-        
+
         if (!aprox_image_pixels(cur, colors, palette_size, cache, data)) {
             GifFreeMapObject(palette);
             free(frames);
